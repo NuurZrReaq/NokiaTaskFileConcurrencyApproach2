@@ -19,8 +19,8 @@ public class MainClass {
 
 
 
-        ForkJoinPool pool = new ForkJoinPool();
-        FileCount fileCount = new FileCount(Paths.get("directory").toRealPath());
+        ForkJoinPool pool = new ForkJoinPool(8);
+        FileCount fileCount = new FileCount(Paths.get("C:\\Users\\NoorZ\\Documents\\dir").toRealPath());
         Long current = System.currentTimeMillis();
         Arrays.stream(pool.invoke(fileCount)).forEach(l->System.out.print(l+" "));
         //fileCount.printLetterCount();
@@ -30,12 +30,12 @@ public class MainClass {
     }
 }
 
-class FileCount extends RecursiveTask<int[]> {
+class FileCount extends RecursiveTask<long[]> {
 
 
 
     private Path filePath;
-    private  static int [] letterCount = new int[26];
+    private  static long [] letterCount = new long[26];
 
 
     public FileCount(Path filePath) {
@@ -45,8 +45,8 @@ class FileCount extends RecursiveTask<int[]> {
 
 
 
-    public  int[] countLowerCase(File file)  {
-        int [] tempLetterCount = new int[26];
+    public  long [] countLowerCase(File file)  {
+        long [] tempLetterCount = new long[26];
         try {
             FileInputStream fin = new FileInputStream(file);
             BufferedInputStream fileReader = new BufferedInputStream(fin);
@@ -71,16 +71,16 @@ class FileCount extends RecursiveTask<int[]> {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return new int[26];
+        return new long[26];
 
 
 
     }
 
     @Override
-    protected int[] compute() {
+    protected long[] compute() {
         final List <FileCount> walks = new ArrayList<>();
-        final List <int[]> countList = new ArrayList<>();
+        final List <long[]> countList = new ArrayList<>();
         try{
             Files.walkFileTree(filePath, new SimpleFileVisitor<>() {
 
@@ -112,7 +112,7 @@ class FileCount extends RecursiveTask<int[]> {
         for (FileCount w : walks) {
             countList.add(w.join());
         }
-        int [][] countArray = new int[countList.size()][26];
+        long [][] countArray = new long[countList.size()][26];
         countList.toArray(countArray);
         return incrementLetterAtIndex(countArray);
 
@@ -130,13 +130,14 @@ class FileCount extends RecursiveTask<int[]> {
         Arrays.stream(letterCount).forEach(l->System.out.print(l+" "));
     }
 
-    private   int[] incrementLetterAtIndex(int [] ... tempLetterCounts){
-        int [] letterCount = new int[26];
-        for(int []temp:tempLetterCounts){
+    private   long[] incrementLetterAtIndex(long [] ... tempLetterCounts){
+        long [] letterCount = new long[26];
+        for(long []temp:tempLetterCounts){
             for(int i=0;i<26;i++){
                 letterCount[i]+=temp[i];
             }
         }
+
         return letterCount;
 
     }
