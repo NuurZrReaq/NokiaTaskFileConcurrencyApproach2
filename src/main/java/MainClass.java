@@ -1,5 +1,9 @@
 import java.io.*;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
@@ -9,37 +13,40 @@ import java.util.stream.Collectors;
 public class MainClass {
 
 
-    public static void main (String []args){
+    public static void main (String []args) throws IOException {
 
 
 
-        File dir = new File ("directory");
 
 
         ForkJoinPool pool = new ForkJoinPool();
-        FileCount fileCount = new FileCount(dir);
+        FileCount fileCount = new FileCount(Paths.get("directory").toRealPath());
         Long current = System.currentTimeMillis();
-        pool.invoke(fileCount);
-        fileCount.printLetterCount();
+        Arrays.stream(pool.invoke(fileCount)).forEach(l->System.out.print(l+" "));
+        //fileCount.printLetterCount();
         System.out.println();
         Long after = System.currentTimeMillis();
         System.out.println(after-current);
     }
 }
 
-class FileCount extends RecursiveAction {
-    private File file;
+class FileCount extends RecursiveTask<int[]> {
+
+
+
+    private Path filePath;
     private  static int [] letterCount = new int[26];
 
-    public FileCount(File file) {
-        this.file = file;
+
+    public FileCount(Path filePath) {
+        this.filePath = filePath;
     }
 
 
 
 
-    public static synchronized void countLowerCase(File file)  {
-
+    public  int[] countLowerCase(File file)  {
+        int [] tempLetterCount = new int[26];
         try {
             FileInputStream fin = new FileInputStream(file);
             BufferedInputStream fileReader = new BufferedInputStream(fin);
@@ -49,7 +56,7 @@ class FileCount extends RecursiveAction {
                 if (Character.isLowerCase((char)c)) {
 
                     try {
-                        incrementLetterAtIndex((char)c-'a');
+                        tempLetterCount[(char)c-'a'] ++;
                     } catch (Exception e) {
                         e.printStackTrace();
                         //System.out.println(fileContent.charAt(i));
@@ -60,45 +67,59 @@ class FileCount extends RecursiveAction {
 
                 }
             }
+            return tempLetterCount;
         } catch (Exception e) {
             e.printStackTrace();
         }
+        return new int[26];
 
 
 
     }
 
     @Override
-    protected void compute() {
+    protected int[] compute() {
+        final List <FileCount> walks = new ArrayList<>();
+        final List <int[]> countList = new ArrayList<>();
+        try{
+            Files.walkFileTree(filePath, new SimpleFileVisitor<>() {
 
-        if(file.isFile()){
-            countLowerCase(file);
-        }
-        else {
+                @Override
+                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                    if (!dir.equals(FileCount.this.filePath)) {
+                        FileCount w = new FileCount(dir);
+                        w.fork();
+                        walks.add(w);
 
-            File [] subFiles = file.listFiles();
-
-            if(subFiles!=null&&subFiles.length >0){
-                FileCount [] fileCounts = new FileCount[subFiles.length];
-                for(int i=0;i< fileCounts.length-1;i++){
-                    fileCounts[i] = new FileCount(subFiles[i]);
-                    fileCounts[i].fork();
+                        return FileVisitResult.SKIP_SUBTREE;
+                    } else {
+                        return FileVisitResult.CONTINUE;
+                    }
                 }
 
-
-
-
-                fileCounts[fileCounts.length-1] = new FileCount(subFiles[fileCounts.length-1]);
-                fileCounts[fileCounts.length-1].compute();
-                for(int i=0;i< fileCounts.length-1;i++){
-                     fileCounts[i].join();
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                    if (file.toFile().isFile()) {
+                        countList.add(countLowerCase(file.toFile()));
+                        return FileVisitResult.SKIP_SUBTREE;
+                    }
+                    return FileVisitResult.CONTINUE;
                 }
-
-
-            }
-
-
+            });
+        }catch (Exception e){
+            e.printStackTrace();
         }
+        for (FileCount w : walks) {
+            countList.add(w.join());
+        }
+        int [][] countArray = new int[countList.size()][26];
+        countList.toArray(countArray);
+        return incrementLetterAtIndex(countArray);
+
+
+
+
+
 
 
 
@@ -109,8 +130,15 @@ class FileCount extends RecursiveAction {
         Arrays.stream(letterCount).forEach(l->System.out.print(l+" "));
     }
 
-    private  static void incrementLetterAtIndex(int index){
-        letterCount[index]++;
+    private   int[] incrementLetterAtIndex(int [] ... tempLetterCounts){
+        int [] letterCount = new int[26];
+        for(int []temp:tempLetterCounts){
+            for(int i=0;i<26;i++){
+                letterCount[i]+=temp[i];
+            }
+        }
+        return letterCount;
+
     }
 
 
