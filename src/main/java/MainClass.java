@@ -75,6 +75,7 @@ class FileCount extends RecursiveAction {
             countLowerCase(file);
         }
         else {
+
             File [] subFiles = file.listFiles();
 
             if(subFiles!=null&&subFiles.length >0){
