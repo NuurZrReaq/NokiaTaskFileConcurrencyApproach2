@@ -38,7 +38,7 @@ class FileCount extends RecursiveAction {
 
 
 
-    public  void countLowerCase(File file)  {
+    public static synchronized void countLowerCase(File file)  {
 
         try {
             FileInputStream fin = new FileInputStream(file);
@@ -109,7 +109,7 @@ class FileCount extends RecursiveAction {
         Arrays.stream(letterCount).forEach(l->System.out.print(l+" "));
     }
 
-    private static synchronized void incrementLetterAtIndex(int index){
+    private  static void incrementLetterAtIndex(int index){
         letterCount[index]++;
     }
 
